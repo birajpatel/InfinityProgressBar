@@ -10,13 +10,11 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.PointF;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Message;
 import android.util.AttributeSet;
 import android.view.View;
 
 //http://en.wikipedia.org/wiki/Lemniscate_of_Bernoulli
+//http://mathworld.wolfram.com/EightCurve.html
 
 public class InfinityProgressBar extends View {
 
@@ -25,40 +23,30 @@ public class InfinityProgressBar extends View {
 	private static final int THIRD = 3;
 	private static final int FOURTH = 4;
 
+	final float radius = 100;
+	final float startX = 200;
+	final float startY = 200;
+
 	Paint p1 = new Paint();
 	Paint p2 = new Paint();
 	Paint p3;
 
-	public InfinityProgressBar(Context context, AttributeSet attrs, int defStyle) {
-		super(context, attrs, defStyle);
+	public InfinityProgressBar(Context context) {
+		super(context);
+		init(null, -1);
 	}
 
 	public InfinityProgressBar(Context context, AttributeSet attrs) {
 		super(context, attrs);
+		init(attrs, -1);
 	}
 
-	int progress = 0;
+	public InfinityProgressBar(Context context, AttributeSet attrs, int defStyle) {
+		super(context, attrs, defStyle);
+		init(attrs, defStyle);
+	}
 
-	class MyHandler extends Handler {
-		public MyHandler(Looper looper) {
-			super(looper);
-		}
-
-		@Override
-		public void handleMessage(Message msg) {
-			progress += 10;
-			if (progress >= pathLength) {
-				progress = 0;
-			}
-			invalidate();
-			spinHandler.sendEmptyMessageDelayed(0, 50);
-		}
-	};
-
-	MyHandler spinHandler;
-
-	public InfinityProgressBar(Context context) {
-		super(context);
+	private void init(AttributeSet attrs, int defStyle) {
 		p1.setStrokeWidth(10);
 		p1.setAntiAlias(true);
 		p1.setDither(true);
@@ -81,9 +69,9 @@ public class InfinityProgressBar extends View {
 		p3.setColor(Color.CYAN);
 
 		preCompute();
-		spinHandler = new MyHandler(Looper.getMainLooper());
-		spinHandler.sendEmptyMessageDelayed(0, 0);
 	}
+
+	int progress = 0;
 
 	class MinToMaxComparator implements Comparator<PointF> {
 
@@ -101,6 +89,8 @@ public class InfinityProgressBar extends View {
 					.sin(t) * Math.sin(t) + 1));
 			float x = (float) xDouble;
 			float y = (float) (xDouble * Math.sin(t));
+			// x = a * sin(t)
+			// y = x * cos(t)
 			x += startX;
 			y += startY;
 			if (isForthQuadrant(x, y)) {
@@ -121,19 +111,9 @@ public class InfinityProgressBar extends View {
 		return x >= startX && y >= startY;
 	}
 
-	final float radius = 100;
-	final float startX = 200;
-	final float startY = 200;
-
 	@Override
 	protected void onDraw(Canvas canvas) {
-		for (PointF p : Q4) {
-			canvas.drawPoint(p.x, p.y, p1);
-			canvas.drawPoint(p.x, startY - (p.y - startY), p1);
-			canvas.drawPoint(startX - (p.x - startX), p.y, p1);
-			canvas.drawPoint(startX - (p.x - startX), startY - (p.y - startY),
-					p1);
-		}
+		drawPath(canvas);
 		int ball1Quadrant = getQuadrantFromProgress(progress);
 		int ball1Index = getBallIndex(progress, ball1Quadrant);
 		PointF ballPoint1 = getBallPoint(ball1Index, ball1Quadrant);
@@ -142,10 +122,27 @@ public class InfinityProgressBar extends View {
 		int ball2Progress = 720 - progress;
 		int ball2Quadrant = getQuadrantFromProgress(ball2Progress);
 		int ball2Index = getBallIndex(ball2Progress, ball2Quadrant);
-		System.out.println("biraj b2quad " + ball2Quadrant + " b2index "
-				+ ball2Index);
 		PointF ballPoint2 = getBallPoint(ball2Index, ball2Quadrant);
 		canvas.drawPoint(ballPoint2.x, ballPoint2.y, p3);
+		progress += 10;
+		if (progress >= pathLength) {
+			progress = 0;
+		}
+		System.out.println("biraj refresher.. " + progress);
+		postInvalidateDelayed(50);
+	}
+
+	private void drawPath(Canvas canvas) {
+		for (PointF p : Q4) {
+			float x = p.x;
+			float y = p.y;
+			float negativeX = getNegativeX(x);
+			float negativeY = getNegativeX(y);
+			canvas.drawPoint(x, y, p1);
+			canvas.drawPoint(x, negativeY, p1);
+			canvas.drawPoint(negativeX, y, p1);
+			canvas.drawPoint(negativeX, negativeY, p1);
+		}
 	}
 
 	private int getBallIndex(int progress, int ballQuadrant) {
@@ -172,13 +169,13 @@ public class InfinityProgressBar extends View {
 	private int getQuadrantFromProgress(int progress) {
 		int quadrant;
 		if (progress > 540) {
-			quadrant = FIRST;
+			quadrant = FIRST;// (-,-)
 		} else if (progress > 360) {
-			quadrant = THIRD;
+			quadrant = THIRD;// (-,+)
 		} else if (progress > 180) {
-			quadrant = SECOND;
+			quadrant = SECOND;// (+,-)
 		} else {
-			quadrant = FOURTH;
+			quadrant = FOURTH;// (+,+)
 		}
 		return quadrant;
 	}
@@ -187,15 +184,25 @@ public class InfinityProgressBar extends View {
 		PointF drawing = Q4.get(index);
 		float ballX = drawing.x;
 		float ballY = drawing.y;
+		float ballNegativeX = getNegativeX(ballX);
+		float ballNegativeY = getNegativeY(ballY);
 		if (quadrant == SECOND) {
-			ballY = startY - (drawing.y - startY);
+			ballY = ballNegativeY;
 		} else if (quadrant == THIRD) {
-			ballX = startX - (drawing.x - startX);
+			ballX = ballNegativeX;
 		} else if (quadrant == FIRST) {
-			ballY = startY - (drawing.y - startY);
-			ballX = startX - (drawing.x - startX);
+			ballY = ballNegativeY;
+			ballX = ballNegativeX;
 		}
 		return new PointF(ballX, ballY);
+	}
+
+	private float getNegativeY(float y) {
+		return (2 * startY - y);
+	}
+
+	private float getNegativeX(float x) {
+		return (2 * startX - x);
 	}
 
 }
