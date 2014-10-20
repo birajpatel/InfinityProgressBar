@@ -1,4 +1,4 @@
-package com.example.test;
+package com.birin.infinityprogressbardemo;
 
 import com.birin.infinityprogressbar.InfinityProgressBar;
 
