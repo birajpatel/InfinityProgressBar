@@ -22,6 +22,9 @@ public class InfinityProgressBar extends View {
 	private static final int SECOND = 2;
 	private static final int THIRD = 3;
 	private static final int FOURTH = 4;
+	private static final int PRECOMPUTE_LENGTH = 720;
+	private final int PATH_LENGTH;
+	private final int SINGLE_QUADRANT_LENGTH;
 
 	final float radius = 100;
 	final float startX = 200;
@@ -30,28 +33,36 @@ public class InfinityProgressBar extends View {
 	Paint p1 = new Paint();
 	Paint p2 = new Paint();
 	Paint p3;
+	Paint p4;
+	Paint p5;
 
 	public InfinityProgressBar(Context context) {
 		super(context);
 		init(null, -1);
+		SINGLE_QUADRANT_LENGTH = Q4.size();
+		PATH_LENGTH = SINGLE_QUADRANT_LENGTH * 4;
 	}
 
 	public InfinityProgressBar(Context context, AttributeSet attrs) {
 		super(context, attrs);
 		init(attrs, -1);
+		SINGLE_QUADRANT_LENGTH = Q4.size();
+		PATH_LENGTH = SINGLE_QUADRANT_LENGTH * 4;
 	}
 
 	public InfinityProgressBar(Context context, AttributeSet attrs, int defStyle) {
 		super(context, attrs, defStyle);
 		init(attrs, defStyle);
+		SINGLE_QUADRANT_LENGTH = Q4.size();
+		PATH_LENGTH = SINGLE_QUADRANT_LENGTH * 4;
 	}
 
 	private void init(AttributeSet attrs, int defStyle) {
-		p1.setStrokeWidth(10);
+		p1.setStrokeWidth(5);
 		p1.setAntiAlias(true);
 		p1.setDither(true);
 		p1.setFilterBitmap(true);
-		p1.setColor(Color.RED);
+		p1.setColor(Color.BLACK);
 		p1.setStyle(Style.FILL);
 		p1.setFlags(Paint.ANTI_ALIAS_FLAG);
 		p1.setStrokeCap(Paint.Cap.ROUND);
@@ -66,7 +77,13 @@ public class InfinityProgressBar extends View {
 		p2.setStrokeCap(Paint.Cap.ROUND);
 
 		p3 = new Paint(p2);
-		p3.setColor(Color.CYAN);
+		p3.setColor(Color.GREEN);
+
+		p4 = new Paint(p2);
+		p4.setColor(Color.YELLOW);
+
+		p5 = new Paint(p2);
+		p5.setColor(Color.RED);
 
 		preCompute();
 	}
@@ -83,8 +100,7 @@ public class InfinityProgressBar extends View {
 	}
 
 	private void preCompute() {
-		long start = System.currentTimeMillis();
-		for (int t = 0; t <= 720; t++) {
+		for (int t = 0; t <= PRECOMPUTE_LENGTH; t++) {
 			double xDouble = (float) ((radius * Math.sqrt(2) * Math.cos(t)) / (Math
 					.sin(t) * Math.sin(t) + 1));
 			float x = (float) xDouble;
@@ -98,14 +114,9 @@ public class InfinityProgressBar extends View {
 			}
 		}
 		Collections.sort(Q4, new MinToMaxComparator());
-		pathLength = Q4.size() * 4;
-		System.out.println("birajt finally after"
-				+ (System.currentTimeMillis() - start));
 	}
 
 	ArrayList<PointF> Q4 = new ArrayList<PointF>();
-
-	int pathLength;
 
 	boolean isForthQuadrant(float x, float y) {
 		return x >= startX && y >= startY;
@@ -113,23 +124,71 @@ public class InfinityProgressBar extends View {
 
 	@Override
 	protected void onDraw(Canvas canvas) {
-		drawPath(canvas);
-		int ball1Quadrant = getQuadrantFromProgress(progress);
-		int ball1Index = getBallIndex(progress, ball1Quadrant);
-		PointF ballPoint1 = getBallPoint(ball1Index, ball1Quadrant);
-		canvas.drawPoint(ballPoint1.x, ballPoint1.y, p2);
-
-		int ball2Progress = 720 - progress;
-		int ball2Quadrant = getQuadrantFromProgress(ball2Progress);
-		int ball2Index = getBallIndex(ball2Progress, ball2Quadrant);
-		PointF ballPoint2 = getBallPoint(ball2Index, ball2Quadrant);
-		canvas.drawPoint(ballPoint2.x, ballPoint2.y, p3);
+//		drawPath(canvas);
+		drawBalls(canvas);
 		progress += 10;
-		if (progress >= pathLength) {
+		if (progress >= PATH_LENGTH) {
 			progress = 0;
 		}
-		System.out.println("biraj refresher.. " + progress);
 		postInvalidateDelayed(50);
+	}
+
+	private void drawBalls(Canvas canvas) {
+		 drawBall1(canvas);
+		 drawBall2(canvas);
+		drawBall3(canvas);
+		drawBall4(canvas);
+	}
+
+	private void drawBall4(Canvas canvas) {
+//		int ball4Prog = ((progress + 3 * SINGLE_QUADRANT_LENGTH) % PATH_LENGTH);
+//		drawBall(canvas, p5, ball4Prog);
+		for (int i = progress, j = SINGLE_QUADRANT_LENGTH; i > (progress - SINGLE_QUADRANT_LENGTH); i--, j--) {
+			int ball3Prog = ((i + 3 * SINGLE_QUADRANT_LENGTH) % PATH_LENGTH);
+			int alpha = (int) (40 * ((j * 1.0) / SINGLE_QUADRANT_LENGTH));
+			p5.setAlpha(alpha);
+			drawBall(canvas, p5, ball3Prog);
+		}
+	}
+
+	private void drawBall3(Canvas canvas) {
+		for (int i = progress, j = SINGLE_QUADRANT_LENGTH; i > (progress - SINGLE_QUADRANT_LENGTH); i--, j--) {
+			int ball3Prog = ((i + 2 * SINGLE_QUADRANT_LENGTH) % PATH_LENGTH);
+			int alpha = (int) (40 * ((j * 1.0) / SINGLE_QUADRANT_LENGTH));
+			p2.setAlpha(alpha);
+			drawBall(canvas, p2, ball3Prog);
+		}
+	}
+
+	private void drawBall2(Canvas canvas) {
+//		int ball2Prog = ((progress + 1 * SINGLE_QUADRANT_LENGTH) % PATH_LENGTH);
+//		drawBall(canvas, p3, ball2Prog);
+		for (int i = progress, j = SINGLE_QUADRANT_LENGTH; i > (progress - SINGLE_QUADRANT_LENGTH); i--, j--) {
+			int ball3Prog = ((i + 1 * SINGLE_QUADRANT_LENGTH) % PATH_LENGTH);
+			int alpha = (int) (40 * ((j * 1.0) / SINGLE_QUADRANT_LENGTH));
+			p3.setAlpha(alpha);
+			drawBall(canvas, p3, ball3Prog);
+		}
+	}
+
+	private void drawBall1(Canvas canvas) {
+//		int ball1Prog = ((progress + 0 * SINGLE_QUADRANT_LENGTH) % PATH_LENGTH);
+//		drawBall(canvas, p2, progress);
+		for (int i = progress,j = SINGLE_QUADRANT_LENGTH; i > (progress - SINGLE_QUADRANT_LENGTH) ; i--,j--) {
+			int ball3Prog = ((i + PATH_LENGTH) % PATH_LENGTH);
+			int alpha = (int) (40 * ((j * 1.0) / SINGLE_QUADRANT_LENGTH));
+			p4.setAlpha(alpha);
+			drawBall(canvas, p4, ball3Prog);
+		}
+	}
+
+	private void drawBall(Canvas canvas, Paint ballPaint, int progress) {
+		int ballQuadrant = getQuadrantFromProgress(progress);
+		PointF fourthQuadrantBallPoint = pickCorrespondingFourthQuadrantPoint(
+				progress, ballQuadrant);
+		PointF ballPoint = adjustBallCordinatesByQuadrant(
+				fourthQuadrantBallPoint, ballQuadrant);
+		canvas.drawPoint(ballPoint.x, ballPoint.y, ballPaint);
 	}
 
 	private void drawPath(Canvas canvas) {
@@ -145,34 +204,35 @@ public class InfinityProgressBar extends View {
 		}
 	}
 
-	private int getBallIndex(int progress, int ballQuadrant) {
-		int index = 0;
-		switch (ballQuadrant) {
-		case 1:
-			index = 180 - (progress - 540);
+	private PointF pickCorrespondingFourthQuadrantPoint(int progress,
+			int quadrant) {
+		int relativeIndexForData = 0;
+		switch (quadrant) {
+		case FIRST:
+			relativeIndexForData = (4 * SINGLE_QUADRANT_LENGTH) - progress - 1;
 			break;
-		case 2:
-			index = 180 - (progress - 180);
+		case SECOND:
+			relativeIndexForData = (2 * SINGLE_QUADRANT_LENGTH) - progress - 1;
 			break;
-		case 3:
-			index = (progress - 360);
+		case THIRD:
+			relativeIndexForData = (progress - (2 * SINGLE_QUADRANT_LENGTH));
 			break;
-		case 4:
-			index = progress;
+		case FOURTH:
+			relativeIndexForData = progress;
 			break;
 		default:
 			break;
 		}
-		return index;
+		return Q4.get(relativeIndexForData);
 	}
 
 	private int getQuadrantFromProgress(int progress) {
 		int quadrant;
-		if (progress > 540) {
+		if (progress >= (3 * SINGLE_QUADRANT_LENGTH)) {
 			quadrant = FIRST;// (-,-)
-		} else if (progress > 360) {
+		} else if (progress >= (2 * SINGLE_QUADRANT_LENGTH)) {
 			quadrant = THIRD;// (-,+)
-		} else if (progress > 180) {
+		} else if (progress >= SINGLE_QUADRANT_LENGTH) {
 			quadrant = SECOND;// (+,-)
 		} else {
 			quadrant = FOURTH;// (+,+)
@@ -180,10 +240,10 @@ public class InfinityProgressBar extends View {
 		return quadrant;
 	}
 
-	private PointF getBallPoint(int index, int quadrant) {
-		PointF drawing = Q4.get(index);
-		float ballX = drawing.x;
-		float ballY = drawing.y;
+	private PointF adjustBallCordinatesByQuadrant(
+			PointF ballCordinateInFourthQuadrant, int quadrant) {
+		float ballX = ballCordinateInFourthQuadrant.x;
+		float ballY = ballCordinateInFourthQuadrant.y;
 		float ballNegativeX = getNegativeX(ballX);
 		float ballNegativeY = getNegativeY(ballY);
 		if (quadrant == SECOND) {
@@ -191,8 +251,8 @@ public class InfinityProgressBar extends View {
 		} else if (quadrant == THIRD) {
 			ballX = ballNegativeX;
 		} else if (quadrant == FIRST) {
-			ballY = ballNegativeY;
 			ballX = ballNegativeX;
+			ballY = ballNegativeY;
 		}
 		return new PointF(ballX, ballY);
 	}
