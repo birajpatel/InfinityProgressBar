@@ -175,7 +175,10 @@ public class InfinityProgressBar extends View {
 //		int ball1Prog = ((progress + 0 * SINGLE_QUADRANT_LENGTH) % PATH_LENGTH);
 //		drawBall(canvas, p2, progress);
 		for (int i = progress,j = SINGLE_QUADRANT_LENGTH; i > (progress - SINGLE_QUADRANT_LENGTH) ; i--,j--) {
-			int ball3Prog = ((i + PATH_LENGTH) % PATH_LENGTH);
+			int ball3Prog = ((i) % PATH_LENGTH);
+			if(ball3Prog < 0){
+				ball3Prog += PATH_LENGTH;
+			}
 			int alpha = (int) (40 * ((j * 1.0) / SINGLE_QUADRANT_LENGTH));
 			p4.setAlpha(alpha);
 			drawBall(canvas, p4, ball3Prog);
