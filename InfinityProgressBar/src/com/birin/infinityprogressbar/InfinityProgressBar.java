@@ -23,12 +23,12 @@ public class InfinityProgressBar extends View {
 	private static final int THIRD = 3;
 	private static final int FOURTH = 4;
 	private static final int PRECOMPUTE_LENGTH = 720;
-	private final int PATH_LENGTH;
-	private final int SINGLE_QUADRANT_LENGTH;
-
-	final float radius = 100;
-	final float startX = 200;
-	final float startY = 200;
+	private static final int DEFAULT_RADIUS = 100;
+	private int totalPathLength;
+	private int singleQuadrantPathLength;
+	private float radius = 0;
+	private float startX = 0;
+	private float startY = 0;
 
 	Paint p1 = new Paint();
 	Paint p2 = new Paint();
@@ -42,23 +42,14 @@ public class InfinityProgressBar extends View {
 
 	public InfinityProgressBar(Context context) {
 		super(context);
-		init(null, -1);
-		SINGLE_QUADRANT_LENGTH = Q4.size();
-		PATH_LENGTH = SINGLE_QUADRANT_LENGTH * 4;
 	}
 
 	public InfinityProgressBar(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		init(attrs, -1);
-		SINGLE_QUADRANT_LENGTH = Q4.size();
-		PATH_LENGTH = SINGLE_QUADRANT_LENGTH * 4;
 	}
 
 	public InfinityProgressBar(Context context, AttributeSet attrs, int defStyle) {
 		super(context, attrs, defStyle);
-		init(attrs, defStyle);
-		SINGLE_QUADRANT_LENGTH = Q4.size();
-		PATH_LENGTH = SINGLE_QUADRANT_LENGTH * 4;
 	}
 
 	private void init(AttributeSet attrs, int defStyle) {
@@ -115,6 +106,11 @@ public class InfinityProgressBar extends View {
 
 	}
 
+	float maxX = Float.MIN_VALUE;
+	float maxY = Float.MIN_VALUE;
+	int xPos = -1;
+	int yPos = -1;
+
 	private void preCompute() {
 		long start = System.currentTimeMillis();
 		for (int t = 0; t <= PRECOMPUTE_LENGTH; t++) {
@@ -127,9 +123,19 @@ public class InfinityProgressBar extends View {
 			x += startX;
 			y += startY;
 			if (isForthQuadrant(x, y)) {
+				if (maxX < x) {
+					maxX = x;
+					xPos = t;
+				}
+				if (maxY < y) {
+					maxY = y;
+					yPos = t;
+				}
 				Q4.add(new Point(x, y));
 			}
 		}
+		System.out.println("biraj xMax " + (maxX - startX) + " maxY " + (maxY - startY) + " x "
+				+ xPos + " y " + yPos);
 		Collections.sort(Q4, new MinToMaxComparator());
 		System.out.println("biraj precompute "
 				+ (System.currentTimeMillis() - start));
@@ -143,32 +149,32 @@ public class InfinityProgressBar extends View {
 
 	@Override
 	protected void onDraw(Canvas canvas) {
-//		drawPath(canvas);
+		// drawPath(canvas);
 		drawBall(canvas, p2, 0);
-		drawBall(canvas, p3, 1);
-		drawBall(canvas, p4, 2);
-		drawBall(canvas, p5, 3);
-
-		drawBall(canvas, p6, 4);
-		drawBall(canvas, p7, 5);
-		drawBall(canvas, p8, 6);
-		drawBall(canvas, p9, 7);
+		// drawBall(canvas, p3, 1);
+		// drawBall(canvas, p4, 2);
+		// drawBall(canvas, p5, 3);
+		//
+		// drawBall(canvas, p6, 4);
+		// drawBall(canvas, p7, 5);
+		// drawBall(canvas, p8, 6);
+		// drawBall(canvas, p9, 7);
 		progress += 10;
-		if (progress >= PATH_LENGTH) {
+		if (progress >= totalPathLength) {
 			progress = 0;
 		}
 		postInvalidateDelayed(50);
 	}
 
-	int totalBalls = 8;
+	int totalBalls = 1;
 
 	private void drawBall(Canvas canvas, Paint ballPaint, int quadrantOffset) {
-		final int trailLength = PATH_LENGTH / totalBalls;
-		
+		final int trailLength = totalPathLength / totalBalls;
+
 		for (int i = progress, j = trailLength; i > (progress - trailLength); i--, j--) {
-			int ballProgress = ((i + quadrantOffset * trailLength) % PATH_LENGTH);
+			int ballProgress = ((i + quadrantOffset * trailLength) % totalPathLength);
 			if (ballProgress < 0) {
-				ballProgress += PATH_LENGTH;
+				ballProgress += totalPathLength;
 			}
 			if (trailLength != 1) {
 				int alpha = (int) (40 * ((j * 1.0) / trailLength));
@@ -210,13 +216,15 @@ public class InfinityProgressBar extends View {
 		int relativeIndexForData = 0;
 		switch (quadrant) {
 		case FIRST:
-			relativeIndexForData = (4 * SINGLE_QUADRANT_LENGTH) - progress - 1;
+			relativeIndexForData = (4 * singleQuadrantPathLength) - progress
+					- 1;
 			break;
 		case SECOND:
-			relativeIndexForData = (2 * SINGLE_QUADRANT_LENGTH) - progress - 1;
+			relativeIndexForData = (2 * singleQuadrantPathLength) - progress
+					- 1;
 			break;
 		case THIRD:
-			relativeIndexForData = (progress - (2 * SINGLE_QUADRANT_LENGTH));
+			relativeIndexForData = (progress - (2 * singleQuadrantPathLength));
 			break;
 		case FOURTH:
 			relativeIndexForData = progress;
@@ -229,11 +237,11 @@ public class InfinityProgressBar extends View {
 
 	private int getQuadrantFromProgress(int progress) {
 		int quadrant;
-		if (progress >= (3 * SINGLE_QUADRANT_LENGTH)) {
+		if (progress >= (3 * singleQuadrantPathLength)) {
 			quadrant = FIRST;// (-,-)
-		} else if (progress >= (2 * SINGLE_QUADRANT_LENGTH)) {
+		} else if (progress >= (2 * singleQuadrantPathLength)) {
 			quadrant = THIRD;// (-,+)
-		} else if (progress >= SINGLE_QUADRANT_LENGTH) {
+		} else if (progress >= singleQuadrantPathLength) {
 			quadrant = SECOND;// (+,-)
 		} else {
 			quadrant = FOURTH;// (+,+)
@@ -252,6 +260,72 @@ public class InfinityProgressBar extends View {
 			ny = (2 * startY - y);
 		}
 
+	}
+
+	@Override
+	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+		int size = 0;
+		final int sizeX;
+		final int sizeY;
+
+		final int width = MeasureSpec.getSize(widthMeasureSpec);
+		final int widthMode = MeasureSpec.getMode(widthMeasureSpec);
+		final int height = MeasureSpec.getSize(heightMeasureSpec);
+		final int heightMode = MeasureSpec.getMode(heightMeasureSpec);
+
+		if (widthMode == MeasureSpec.UNSPECIFIED
+				&& heightMode == MeasureSpec.UNSPECIFIED) {
+
+		} else if (widthMode == MeasureSpec.UNSPECIFIED) {
+
+		} else {
+
+		}
+
+		System.out.println("biraj MeasureSpec " + width + " Ht " + height);
+		System.out.println("biraj Widthmode " + printMode(widthMode)
+				+ " HtMode " + printMode(heightMode));
+		if (width > height) {
+			size = height;
+		} else {
+			size = width;
+		}
+		System.out.println("biraj onMeasure size " + size);
+		int half = ((size - 20) / 2);
+		int halfX;
+		int halfY;
+		radius = (float) (half / Math.sqrt(2));
+		startX = half + 10;
+		startY = half + 10;
+		setMeasuredDimension(size, size);
+	}
+
+	private String printMode(int mode) {
+		String modeS = "unknown";
+		switch (mode) {
+		case MeasureSpec.AT_MOST:
+			modeS = "AT_MOST";
+			break;
+		case MeasureSpec.EXACTLY:
+			modeS = "EXACTLY";
+			break;
+		case MeasureSpec.UNSPECIFIED:
+			modeS = "UNSPECIFIED";
+			break;
+		default:
+			break;
+		}
+		return modeS;
+	}
+
+	@Override
+	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+		super.onSizeChanged(w, h, oldw, oldh);
+		System.out.println("biraj OnSizeChanged w" + w + " ht " + h);
+		init(null, -1);
+		singleQuadrantPathLength = Q4.size();
+		totalPathLength = singleQuadrantPathLength * 4;
 	}
 
 }
