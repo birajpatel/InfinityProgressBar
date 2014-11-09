@@ -21,7 +21,7 @@ public class MainActivity extends Activity {
 		infynity.setBackgroundColor(Color.GRAY);
 		layout.addView(infynity);
 		setContentView(layout);
-		infynity.getLayoutParams().width = 400;
+		infynity.getLayoutParams().width = 300;
 		infynity.getLayoutParams().height = LayoutParams.WRAP_CONTENT;
 	}
 

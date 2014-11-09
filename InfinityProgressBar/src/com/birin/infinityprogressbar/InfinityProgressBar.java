@@ -23,12 +23,13 @@ public class InfinityProgressBar extends View {
 	private static final int THIRD = 3;
 	private static final int FOURTH = 4;
 	private static final int PRECOMPUTE_LENGTH = 720;
-	private static final int DEFAULT_RADIUS = 100;
+	private static final int MAX_Y_POSITION = 120;
+	private static final int DEFAULT_RADIUS = 80;
 	private int totalPathLength;
 	private int singleQuadrantPathLength;
-	private float radius = 0;
-	private float startX = 0;
-	private float startY = 0;
+	private float radius = 100;
+	private float startX = 200;
+	private float startY = 200;
 
 	Paint p1 = new Paint();
 	Paint p2 = new Paint();
@@ -97,55 +98,33 @@ public class InfinityProgressBar extends View {
 
 	int progress = 0;
 
-	class MinToMaxComparator implements Comparator<PointF> {
-
-		@Override
-		public int compare(PointF lhs, PointF rhs) {
-			return Float.valueOf(lhs.x).compareTo(rhs.x);
-		}
-
-	}
-
-	float maxX = Float.MIN_VALUE;
-	float maxY = Float.MIN_VALUE;
-	int xPos = -1;
-	int yPos = -1;
-
 	private void preCompute() {
 		long start = System.currentTimeMillis();
+		ParametricCurve curve = getSelectedCurve();
+		Q4.clear();
 		for (int t = 0; t <= PRECOMPUTE_LENGTH; t++) {
-			double xDouble = (float) ((radius * Math.sqrt(2) * Math.cos(t)) / (Math
-					.sin(t) * Math.sin(t) + 1));
-			float x = (float) xDouble;
-			float y = (float) (xDouble * Math.sin(t));
-			// x = a * sin(t)
-			// y = x * cos(t)
-			x += startX;
-			y += startY;
-			if (isForthQuadrant(x, y)) {
-				if (maxX < x) {
-					maxX = x;
-					xPos = t;
-				}
-				if (maxY < y) {
-					maxY = y;
-					yPos = t;
-				}
-				Q4.add(new Point(x, y));
+			PointF pointF = curve.getPoint(t);
+			Point point = new Point(pointF.x + startX, pointF.y + startY);
+			// x += startX;
+			// y += startY;
+			if (isForthQuadrant(point)) {
+				Q4.add(point);
 			}
 		}
-		System.out.println("biraj xMax " + (maxX - startX) + " maxY " + (maxY - startY) + " x "
-				+ xPos + " y " + yPos);
-		Collections.sort(Q4, new MinToMaxComparator());
+		Collections.sort(Q4);
 		System.out.println("biraj precompute "
 				+ (System.currentTimeMillis() - start));
 	}
 
-	ArrayList<Point> Q4 = new ArrayList<Point>();
-
-	boolean isForthQuadrant(float x, float y) {
-		return x >= startX && y >= startY;
+	boolean isForthQuadrant(Point point) {
+		return point.x >= startX && point.y >= startY;
 	}
+
+	private ParametricCurve getSelectedCurve() {
+		return new LamniscateOfBurnolli();
+	}
+
+	ArrayList<Point> Q4 = new ArrayList<Point>();
 
 	@Override
 	protected void onDraw(Canvas canvas) {
@@ -163,7 +142,7 @@ public class InfinityProgressBar extends View {
 		if (progress >= totalPathLength) {
 			progress = 0;
 		}
-		postInvalidateDelayed(50);
+		// postInvalidateDelayed(50);
 	}
 
 	int totalBalls = 1;
@@ -249,7 +228,7 @@ public class InfinityProgressBar extends View {
 		return quadrant;
 	}
 
-	class Point extends PointF {
+	class Point extends PointF implements Comparable<Point> {
 
 		final float nx;
 		final float ny;
@@ -260,12 +239,44 @@ public class InfinityProgressBar extends View {
 			ny = (2 * startY - y);
 		}
 
+		@Override
+		public int compareTo(Point another) {
+			return Float.valueOf(x).compareTo(another.x);
+		}
+
+	}
+
+	private interface ParametricCurve {
+		public PointF getPoint(int t);
+	}
+
+	private class LamniscateOfBurnolli implements ParametricCurve {
+
+		@Override
+		public PointF getPoint(int t) {
+			double xDouble = (radius * Math.sqrt(2) * Math.cos(t))
+					/ (Math.sin(t) * Math.sin(t) + 1);
+			float x = (float) xDouble;
+			float y = (float) (xDouble * Math.sin(t));
+			return new PointF(x, y);
+		}
+
+	}
+
+	private class EightCurve implements ParametricCurve {
+
+		@Override
+		public PointF getPoint(int t) {
+			float x = (float) (radius * Math.sin(t));
+			float y = (float) (x * Math.cos(t));
+			return new PointF(x, y);
+		}
+
 	}
 
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 		super.onMeasure(widthMeasureSpec, heightMeasureSpec);
-		int size = 0;
 		final int sizeX;
 		final int sizeY;
 
@@ -273,32 +284,40 @@ public class InfinityProgressBar extends View {
 		final int widthMode = MeasureSpec.getMode(widthMeasureSpec);
 		final int height = MeasureSpec.getSize(heightMeasureSpec);
 		final int heightMode = MeasureSpec.getMode(heightMeasureSpec);
-
-		if (widthMode == MeasureSpec.UNSPECIFIED
-				&& heightMode == MeasureSpec.UNSPECIFIED) {
-
-		} else if (widthMode == MeasureSpec.UNSPECIFIED) {
-
-		} else {
-
-		}
-
 		System.out.println("biraj MeasureSpec " + width + " Ht " + height);
 		System.out.println("biraj Widthmode " + printMode(widthMode)
 				+ " HtMode " + printMode(heightMode));
-		if (width > height) {
-			size = height;
-		} else {
-			size = width;
+
+		switch (widthMode) {
+		case MeasureSpec.EXACTLY:
+			sizeX = width;
+			break;
+		case MeasureSpec.UNSPECIFIED:
+		case MeasureSpec.AT_MOST:
+		default:
+			sizeX = (int) (DEFAULT_RADIUS * Math.sqrt(2));
+			break;
 		}
-		System.out.println("biraj onMeasure size " + size);
-		int half = ((size - 20) / 2);
-		int halfX;
-		int halfY;
-		radius = (float) (half / Math.sqrt(2));
-		startX = half + 10;
-		startY = half + 10;
-		setMeasuredDimension(size, size);
+
+		int halfX = ((sizeX - 20) / 2);
+		radius = (float) (halfX / Math.sqrt(2));
+		System.out.println("biraj radius " + radius);
+		switch (heightMode) {
+		case MeasureSpec.EXACTLY:
+			sizeY = height;
+			break;
+		case MeasureSpec.UNSPECIFIED:
+		case MeasureSpec.AT_MOST:
+		default:
+			sizeY = (int) (2 * getSelectedCurve().getPoint(MAX_Y_POSITION).y + 20);
+			break;
+		}
+		int halfY = ((sizeY - 20) / 2);
+		startX = halfX + 10;
+		startY = halfY + 10;
+		System.out.println("biraj onMeasure final sizeX " + sizeX + " sizeY "
+				+ sizeY + " StartX " + startX + " startY " + startY);
+		setMeasuredDimension(sizeX, sizeY);
 	}
 
 	private String printMode(int mode) {
