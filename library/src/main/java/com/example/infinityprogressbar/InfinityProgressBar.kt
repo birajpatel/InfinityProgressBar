@@ -1,16 +1,14 @@
 package com.example.infinityprogressbar
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -23,6 +21,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
+
 
 /**
  * Pre-calculated normalized points of the Lemniscate of Bernoulli.
@@ -62,18 +61,19 @@ fun InfinityProgressBar(
     durationMillis: Int = 2000,
     activeSegmentLength: Float = 0.25f
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "InfinityProgressTransition")
-    
-    // Animates progress phase from 0f to 1f (representing 0% to 100% of the path length)
-    val progressPhase by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = durationMillis, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "InfinityProgressPhase"
-    )
+    var progressPhase by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(durationMillis) {
+        val startTime = withFrameMillis { it }
+        val startPhase = progressPhase
+        while (true) {
+            withFrameMillis { frameTime ->
+                val elapsed = frameTime - startTime
+                val duration = maxOf(durationMillis.toFloat(), 1f)
+                progressPhase = (startPhase + (elapsed.toFloat() / duration)) % 1f
+            }
+        }
+    }
 
     Canvas(modifier = modifier) {
         val width = size.width
